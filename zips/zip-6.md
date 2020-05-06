@@ -4,17 +4,17 @@
 
 ## Abstract
 
-This ZIP details the use of a standalone binary used to mimic the behaviour of the zilliqa network, its objective being to test transactions and smart contracts. This is hereby referred to as the **Isolated Server**.
+This ZIP details the use of a standalone binary used to mimic the behaviour of a Zilliqa node, its objective being to test transactions and smart contracts. This is hereby referred to as the **Isolated Server**.
 
 ## Motivation
 
-To test a transaction on the zilliqa network, before this utility, the developers had to send it to either a developer testnet or a mainnet, where they had to wait a non-trivial amount of time to check if the transaction is correct. The issue becomes manifold if a complicated smart contract transaction is
-being deployed. For every bug encountered, the developer will have to wait some time, modify the contract and try to deploy it again. A standalone binary which mimics the behaviour of a zilliqa node would make this process faster. It would be able to instantaneously tell if the tranasaction is correct or not.
+Before this utility, developers testing a transaction had to send it to either the developer testnet or mainnet, where they had to wait a non-trivial amount of time to check if the transaction is correct. The issue becomes manifold if a complicated smart contract transaction is
+being deployed. For every bug encountered, the developer would have had to wait some time, modify the contract and try to deploy the transaction again. A standalone binary which mimics the behaviour of a Zilliqa node would make this process faster. It would be able to instantaneously tell if the transaction is correct or not.
 
 
 ## Specification
 
-The transaction is sent to the server in the same way as it would be to a zilliqa network, through a jsonrpc-api call [CreateTransaction](https://apidocs.zilliqa.com/#createtransaction). The return of the jsonrpc-api is also similar. The transaction could be then interacted with all the Transaction related APIs.
+The transaction is sent to the Isolated Server in the same way as it would have been to a Zilliqa network, i.e., through a JSON-RPC API call [CreateTransaction](https://apidocs.zilliqa.com/#createtransaction). The returned message from the JSON-RPC API call is also similar. Interacting with the created transaction can then be done through the transaction-related APIs.
 
 The APIs available in the Isolated Server are:
 
@@ -32,43 +32,43 @@ The APIs available in the Isolated Server are:
 
 Refer to [API docs](https://apidocs.zilliqa.com).
 
-For a detailed guide to deploy and use Isolated server, see [Isolated Server Instructions](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md).
+> For a detailed guide to deploying and using the Isolated Server, see [Isolated Server Instructions](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md).
 
-It has two variants i.e. `time-triggered` and `event-triggered`. 
-In a time-triggered system, the blocknumber increases every few time intervals. This interval can be user defined.
-In an event-triggered system, the blocknumber increases using a json-rpc api call `IncreaseBlocknum`. 
+The Isolated Server has two variants, i.e., `time-triggered` and `event-triggered`.
+In a time-triggered system, the transaction block number increases at fixed time intervals. This interval can be user-defined.
+In an event-triggered system, the transaction block number is increased by using a JSON-RPC API call `IncreaseBlocknum`. 
 
 The variant can be specified with parameter `-t` when starting the system. See [Isolated Server Boostrap Options](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md#bootstrap-options) for more details.
 
 ## Rationale
 
-The server when it recieves a transaction, applies the same set of checks to it as a zilliqa node would apply. The transaction is then confirmed or rejected and the corresponding state is saved. This saves on time for the consensus between nodes, which is a major bottleneck in terms of testing.
+When the Isolated Server receives a transaction, it applies the same set of checks to the transaction as a Zilliqa node would apply. The transaction is then confirmed or rejected and the corresponding state is saved. This saves on time for the consensus between nodes, which is a major bottleneck in terms of testing.
 
-The server tries to enable all the APIs which are responsible to test a transaction. However, it does not form an actual blockchain, it just simulates it.
+The server tries to enable all the APIs which are applicable to testing a transaction. However, it does not form an actual blockchain; it just simulates it.
 
 It is a conscious decsion here to not enable block related APIs as those have no meaning in a single node simulation enviornment. Since no block is being generated, APIs like `GetTxBlock` or `GetNumTxnsTxEpoch` do not make sense.
 
-To test a transaction however, two approachs emerged. 
+To test a transaction, however, two approaches emerged.
 
-* Event Trigger: Say a developer wants to test his her smart contract at blocknumber `N`. He/she deploys the transaction at blocknumber `M` and then can use the `Increase Blocknumber` API to increment by
-`N-M` and figure out its behaviour at `Nth` blocknumber. This gave rise to the event-triggered mechanism. The user will not have to wait to reach the `Nth` block.
+* Event Trigger: Say a developer wants to test his/her smart contract at block number `N`. He/she deploys the transaction at block number `M`, and then can use the `IncreaseBlocknum` API to increment the block number by
+`N-M` to figure out the transaction's behaviour at block number `N`. This gave rise to the event-triggered mechanism. The user will not have to wait to reach block number `N`.
 
-* Time Trigger: The event-triggered mechanism fails when the isolated server is being used by multiple users as a single user might change the blocknumber, causing confusion for the other users, hence when this is enabled, the blocknumber automatically updates after specific time intervals. `IncreaseBlocknum` is disabled.
+* Time Trigger: The event-triggered mechanism can fail when the Isolated Server is being used by multiple users; one or more of those users might change the block number, causing confusion for the rest. In this situation, the time-triggered variant can be enabled instead, so that the block number automatically updates for everyone at regular time intervals. When the time-triggered variant is used, the `IncreaseBlocknum` API is disabled.
 
-The Isolated server is just a layer above the original zilliqa code. Hence, most of the updates in zilliqa code base are automatically updated in the isolated server.
+The Isolated Server is just a layer above the original Zilliqa code. Hence, most of the updates in the Zilliqa code base are automatically applied to the Isolated Server.
 
 
 ## Test Cases
 
-- Run an isolated server, Refer to [Isolated Server Instructions](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md)
-Example bootstrap command:
+- Run an instance of the Isolated Server. Refer to [Isolated Server Instructions](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md)
+. Example bootstrap command:
 
 ```bash 
 ./build/bin/isolatedServer -f isolated-server-accounts.json -t 100
 ```
 
 
-- Issue a `CreateTransaction` to the isolated server to test the transaction. Example to deploy a smart contract (Fungible Token):
+- Issue a `CreateTransaction` to the Isolated Server to test the transaction. Example to deploy a smart contract (Fungible Token):
 
  ```json
 curl -d '{
@@ -82,8 +82,8 @@ curl -d '{
 
 Where `https://localhost:5555` is the location of the isolated server.
 
-- Use a `GetTransacition` to check the reciept and check if the transaction has succeeded.
-  Example of a succesful deployment:
+- Use `GetTransacition` to check the receipt and check if the transaction has succeeded.
+  Example of a successful deployment:
 ```json
   {
   "id": "1",
