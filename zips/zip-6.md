@@ -18,19 +18,23 @@ The transaction is sent to the Isolated Server in the same way as it would have 
 
 The APIs available in the Isolated Server are:
 
-* `CreateTransaction` : Input a transaction json payload 
-* `IncreaseBlocknum` : Increase the blocknum by a given input (For event-triggered system)
-* `GetSmartContractSubState` : Get the state of a smart contract
-* `GetSmartContractCode` : Get code at a given address
-* `GetMinimumGasPrice` : Get the minimum gas price
-* `SetMinimumGasPrice`: Set the minimum gas price
-* `GetBalance`: Get balance and nonce of an account
-* `GetSmartContracts` : get smart contract for an address
-* `GetNetworkID` : Get Network ID of the hypothetical chain.
-* `GetSmartContractInit` : get init json for a SC.
-* `GetTransaction` : Get Transaction info by hash.
+* `CreateTransaction` 
+* `GetSmartContractSubState`
+* `GetSmartContractCode`
+* `GetMinimumGasPrice`
+* `GetBalance`
+* `GetSmartContracts` 
+* `GetNetworkID` 
+* `GetSmartContractInit` 
+* `GetTransaction` 
 
-Refer to [API docs](https://apidocs.zilliqa.com).
+Refer to [API docs](https://apidocs.zilliqa.com) for more information for these APIs.
+
+APIs specific to the Isolated Server:
+
+* `IncreaseBlocknum` : Increase the blocknum by a given input (For event-triggered system).
+* `GetBlocknum` : Get the blocknum of the blockchain.
+* `SetMinimumGasPrice`: Set the minimum gas price of the blockchain.
 
 > For a detailed guide to deploying and using the Isolated Server, see [Isolated Server Instructions](https://github.com/Zilliqa/Zilliqa/blob/master/ISOLATED_SERVER_setup.md).
 
@@ -46,7 +50,7 @@ When the Isolated Server receives a transaction, it applies the same set of chec
 
 The server tries to enable all the APIs which are applicable to testing a transaction. However, it does not form an actual blockchain; it just simulates it.
 
-It is a conscious decsion here to not enable block related APIs as those have no meaning in a single node simulation enviornment. Since no block is being generated, APIs like `GetTxBlock` or `GetNumTxnsTxEpoch` do not make sense.
+It is a conscious decsion here to not enable block related APIs as no blocks are being generated nor being stored, since it is a single node enviornment. Hence, APIs like `GetTxBlock` or `GetNumTxnsTxEpoch` do not make sense. Since blocknumber is an important parameter in testing, APIs to change and query it have been provided.
 
 To test a transaction, however, two approaches emerged.
 
