@@ -1,10 +1,10 @@
-|  ZIP | Title | Status| Type | Author | Created (yyyy-mm-dd)
+|  ZIP | Title | Status| Type | Author | Created (yyyy-mm-dd) | Updated (yyyy-mm-dd)
 |--|--|--|--| -- | -- | -- |
-| 6  | Zilliqa Isolated Server | Draft | Standards Track  | Kaustubh Shamshery <kaustubh@zilliqa.com>| 2020-05-06 
+| 6  | Zilliqa Isolated Server | Draft | Standards Track  | Kaustubh Shamshery <kaustubh@zilliqa.com>| 2020-05-06 | 2020-05-06
 
 ## Abstract
 
-This ZIP details the use of a standalone binary used to mimic the behaviour of the zilliqa network, its objective being to test transactions and smart contracts. This is hearby referred to as `Isolated Server`.
+This ZIP details the use of a standalone binary used to mimic the behaviour of the zilliqa network, its objective being to test transactions and smart contracts. This is hereby referred to as the **Isolated Server**.
 
 ## Motivation
 
@@ -77,13 +77,14 @@ curl -d '{
     "method": "CreateTransaction",
     "params": [{"version":21823489,"nonce":3980,"toAddr":"0x0000000000000000000000000000000000000000","amount":"0","pubKey":"0246e7178dc8253201101e18fd6f6eb9972451d121fc57aa2a06dd5c111e58dc6a","gasPrice":"1000000000","gasLimit":"10000","code":"scilla_version 0\n\n(* This contract implements a fungible token interface a la ERC20.*)\n\n(***************************************************)\n(*               Associated library                *)\n(***************************************************)\nlibrary FungibleToken\n\nlet min_int =\n  fun (a : Uint128) =\u003e fun (b : Uint128) =\u003e\n  let alt = builtin lt a b in\n  match alt with\n  | True =\u003e\n    a\n  | False =\u003e\n    b\n  end\n\nlet le_int =\n  fun (a : Uint128) =\u003e fun (b : Uint128) =\u003e\n    let x = builtin lt a b in\n    match x with\n    | True =\u003e True\n    | False =\u003e\n      let y = builtin eq a b in\n      match y with\n      | True =\u003e True\n      | False =\u003e False\n      end\n    end\n\n\n(***************************************************)\n(*             The contract definition             *)\n(***************************************************)\n\ncontract FungibleToken\n(owner : ByStr20,\n total_tokens : Uint128,\n decimals : Uint32,\n name : String,\n symbol : String)\n\n(* Initial balance is not stated explicitly: it's initialized when creating the contract. *)\n\nfield balances : Map ByStr20 Uint128 =\n  let m = Emp ByStr20 Uint128 in\n    builtin put m owner total_tokens\nfield allowed : Map ByStr20 (Map ByStr20 Uint128) = Emp ByStr20 (Map ByStr20 Uint128)\n\ntransition BalanceOf (tokenOwner : ByStr20)\n  bal \u003c- balances[tokenOwner];\n  match bal with\n  | Some v =\u003e\n\te = {_eventname : \"BalanceOf\"; address : tokenOwner; balance : v};\n\tevent e\n  | None =\u003e\n\te = {_eventname : \"BalanceOf\"; address : tokenOwner; balance : Uint128 0};\n    event e\n  end\nend\n\ntransition TotalSupply ()\n  e = {_eventname : \"TotalSupply\"; caller : _sender; balance : total_tokens};\n  event e\nend\n\ntransition Transfer (to : ByStr20, tokens : Uint128)\n  bal \u003c- balances[_sender];\n  match bal with\n  | Some b =\u003e\n    can_do = le_int tokens b;\n    match can_do with\n    | True =\u003e\n      (* subtract tokens from _sender and add it to \"to\" *)\n      new_sender_bal = builtin sub b tokens;\n      balances[_sender] := new_sender_bal;\n\n      (* Adds tokens to \"to\" address *)\n      to_bal \u003c- balances[to];\n      new_to_bal = match to_bal with\n      | Some x =\u003e builtin add x tokens\n      | None =\u003e tokens\n      end;\n\n  \t  balances[to] := new_to_bal;\n      e = {_eventname : \"TransferSuccess\"; sender : _sender; recipient : to; amount : tokens};\n      event e\n    | False =\u003e\n      (* balance not sufficient. *)\n      e = {_eventname : \"TransferFailure\"; sender : _sender; recipient : to; amount : Uint128 0};\n      event e\n    end\n  | None =\u003e\n    (* no balance record, can't transfer *)\n  \te = {_eventname : \"TransferFailure\"; sender : _sender; recipient : to; amount : Uint128 0};\n    event e\n  end\nend\n\ntransition TransferFrom (from : ByStr20, to : ByStr20, tokens : Uint128)\n  bal \u003c- balances[from];\n  (* Check if _sender has been authorized by \"from\" *)\n  sender_allowed_from \u003c- allowed[from][_sender];\n  match bal with\n  | Some a =\u003e\n    match sender_allowed_from with\n    | Some b =\u003e\n        (* We can only transfer the minimum of available or authorized tokens *)\n        t = min_int a b;\n        can_do = le_int tokens t;\n        match can_do with\n        | True =\u003e\n            (* tokens is what we should subtract from \"from\" and add to \"to\" *)\n            new_from_bal = builtin sub a tokens;\n            balances[from] := new_from_bal;\n            to_bal \u003c- balances[to];\n            match to_bal with\n            | Some tb =\u003e\n                new_to_bal = builtin add tb tokens;\n                balances[to] := new_to_bal\n            | None =\u003e\n                (* \"to\" has no balance. So just set it to tokens *)\n                balances[to] := tokens\n            end;\n            (* reduce \"allowed\" by \"tokens\" *)\n            new_allowed = builtin sub b tokens;\n            allowed[from][_sender] := new_allowed;\n            e = {_eventname : \"TransferFromSuccess\"; sender : from; recipient : to; amount : tokens};\n            event e\n        | False =\u003e\n            e = {_eventname : \"TransferFromFailure\"; sender : from; recipient : to; amount : Uint128 0};\n            event e\n        end\n    | None =\u003e\n        e = {_eventname : \"TransferFromFailure\"; sender : from; recipient : to; amount : Uint128 0};\n        event e\n    end\n  | None =\u003e\n\te = {_eventname : \"TransferFromFailure\"; sender : from; recipient : to; amount : Uint128 0};\n\tevent e\n  end\nend\n\ntransition Approve (spender : ByStr20, tokens : Uint128)\n  allowed[_sender][spender] := tokens;\n  e = {_eventname : \"ApproveSuccess\"; approver : _sender; spender : spender; amount : tokens};\n  event e\nend\n\ntransition Allowance (tokenOwner : ByStr20, spender : ByStr20)\n  spender_allowance \u003c- allowed[tokenOwner][spender];\n  match spender_allowance with\n  | Some n =\u003e\n      e = {_eventname : \"Allowance\"; owner : tokenOwner; spender : spender; amount : n};\n      event e\n  | None =\u003e\n      e = {_eventname : \"Allowance\"; owner : tokenOwner; spender : spender; amount : Uint128 0};\n      event e\n  end\nend","data":"[{\"vname\":\"_scilla_version\",\"type\":\"Uint32\",\"value\":\"0\"},{\"vname\":\"owner\",\"type\":\"ByStr20\",\"value\":\"0x9bfec715a6bd658fcb62b0f8cc9bfa2ade71434a\"},{\"vname\":\"total_tokens\",\"type\":\"Uint128\",\"value\":\"1000000000\"},{\"vname\":\"decimals\",\"type\":\"Uint32\",\"value\":\"0\"},{\"vname\":\"name\",\"type\":\"String\",\"value\":\"BobCoin\"},{\"vname\":\"symbol\",\"type\":\"String\",\"value\":\"BOB\"}]","signature":"dea51a6af3300ec320a1c8152ddbdf90a71d88b769dafedeb738d5843016c6ce39cb9f10e563e658f520f5747b23d60af6ac15baad7655f7de0441fa338be501","priority":false}]
 }' -H "Content-Type: application/json" -X POST "https://localhost:5555"
+
 ```
+
 Where `https://localhost:5555` is the port of the isolated server.
 
 - Use a `GetTransacition` to check the reciept and check if the transaction has succeeded.
   Example of a succesful deployment:
-
-  ```json
+```json
   {
   "id": "1",
   "jsonrpc": "2.0",
@@ -104,9 +105,12 @@ Where `https://localhost:5555` is the port of the isolated server.
     "version": "21823489"
   }
 }
-  ```
+
+```
 
 - The transaction would be confirmed (or rejected) almost instantaneously.
+
+- The API calls can also be made using [Zilliqa SDKs](https://dev.zilliqa.com/docs/en/api-sdk).
 
 
 ## Implementation
